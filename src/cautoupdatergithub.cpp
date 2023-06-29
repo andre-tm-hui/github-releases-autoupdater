@@ -107,8 +107,8 @@ void CAutoUpdaterGithub::updateCheckRequestFinished()
     const QJsonDocument jsonDocument = QJsonDocument::fromJson(releases.toUtf8());
     const QJsonObject json = jsonDocument.object();
 
-	// Skipping the 0 item because anything before the first "release-header" is not a release
-	for (int releaseIndex = 1, numItems = releases.size(); releaseIndex < numItems; ++releaseIndex)
+	// Index 0 is the newest update.
+	for (int releaseIndex = 0, numItems = releases.size(); releaseIndex < numItems; ++releaseIndex)
 	{
         QString updateVersion = json["tag_name"].toString();
         QString url = json["assets"][0]["browser_download_url"].toString();

@@ -7,6 +7,7 @@ DISABLE_COMPILER_WARNINGS
 #include <QDir>
 #include <QNetworkReply>
 #include <QNetworkRequest>
+#include <QJsonArray>
 RESTORE_COMPILER_WARNINGS
 
 #include <assert.h>
@@ -105,27 +106,28 @@ void CAutoUpdaterGithub::updateCheckRequestFinished()
 	ChangeLog changelog;
     const auto releases = QString(reply->readAll());
     const QJsonDocument jsonDocument = QJsonDocument::fromJson(releases.toUtf8());
-    const QJsonObject json = jsonDocument.object();
+    if (jsonDocument.isArray()) {
+        QJsonArray releasesArray = jsonDocument.array();
+        for (const QJsonValue& release : releasesArray) {
+            QJsonObject json = release.toObject();
 
-	// Index 0 is the newest update.
-	for (int releaseIndex = 0, numItems = releases.size(); releaseIndex < numItems; ++releaseIndex)
-	{
-        QString updateVersion = json["tag_name"].toString();
-        QString url = json["assets"][0]["browser_download_url"].toString();
-        QString releaseUrl = json["html_url"].toString(); // Fallback incase there is no download link available
-			
-		if (updateVersion.startsWith(QStringLiteral(".v")))
-			updateVersion.remove(0, 2);
-		else if (updateVersion.startsWith('v'))
-			updateVersion.remove(0, 1);
+            QString updateVersion = json["tag_name"].toString();
+            QString url = json["assets"][0]["browser_download_url"].toString();
+            QString releaseUrl = json["html_url"].toString(); // Fallback incase there is no download link available
 
-		if (!naturalSortQstringComparator(_currentVersionString, updateVersion))
-			continue; // version <= _currentVersionString, skipping
+            if (updateVersion.startsWith(QStringLiteral(".v")))
+                updateVersion.remove(0, 2);
+            else if (updateVersion.startsWith('v'))
+                updateVersion.remove(0, 1);
 
-        const QString updateChanges = json["body"].toString();
+            if (!naturalSortQstringComparator(_currentVersionString, updateVersion))
+                continue; // version <= _currentVersionString, skipping
 
-        changelog.push_back({ updateVersion, updateChanges, !url.isEmpty() ? url : releaseUrl });
-	}
+            const QString updateChanges = json["body"].toString();
+
+            changelog.push_back({ updateVersion, updateChanges, !url.isEmpty() ? url : releaseUrl });
+        }
+    }
 
 	if (_listener)
 		_listener->onUpdateAvailable(changelog);
